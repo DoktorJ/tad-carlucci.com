@@ -5,6 +5,16 @@ var earSel
 var wColorSel, wShapeSel
 var noBoxRad, girlBoxRad, boyBoxRad
 
+var FRAGMENT_TYPE_CRC32 = 1
+var FRAGMENT_TYPE_HASHCODE = 2
+var FRAGMENT_TYPE_TEXT = 4
+var FRAGMENT_INPUT_NOSPACE = 8
+var FRAGMENT_INPUT_ALNUM = 16
+var FRAGMENT_BASE_10 = 32
+var FRAGMENT_BASE_16 = 64
+var FRAGMENT_BASE_36 = 128
+var fragmode = 33
+
 var canonical
 
 (function(){
@@ -41,17 +51,20 @@ var canonical
             document.getElementById('boxlayer').style.visibility = "visible"
             box = (girlBox) ? 1 : 2
         }
-        var link = canonical + '#' + headSel.options[   headSel.selectedIndex   ].getAttribute('data-tag') + '.' +
-                                     furSel.options[    furSel.selectedIndex    ].getAttribute('data-tag') + '.' +
-                                     eColorSel.options[ eColorSel.selectedIndex ].getAttribute('data-tag') + '.' +
-                                     eShapeSel.options[ eShapeSel.selectedIndex ].getAttribute('data-tag') + '.' +
-                                     ePupilSel.options[ ePupilSel.selectedIndex ].getAttribute('data-tag') + '.' +
-                                     earSel.options[    earSel.selectedIndex    ].getAttribute('data-tag') + '.' +
-                                     wColorSel.options[ wColorSel.selectedIndex ].getAttribute('data-tag') + '.' +
-                                     wShapeSel.options[ wShapeSel.selectedIndex ].getAttribute('data-tag') + '.' +
-                                     box
+        var link = canonical + '#'
+        link += [
+            headSel.options[   headSel.selectedIndex   ].getAttribute('data-tag'),
+            furSel.options[    furSel.selectedIndex    ].getAttribute('data-tag'),
+            eColorSel.options[ eColorSel.selectedIndex ].getAttribute('data-tag'),
+            eShapeSel.options[ eShapeSel.selectedIndex ].getAttribute('data-tag'),
+            ePupilSel.options[ ePupilSel.selectedIndex ].getAttribute('data-tag'),
+            earSel.options[    earSel.selectedIndex    ].getAttribute('data-tag'),
+            wColorSel.options[ wColorSel.selectedIndex ].getAttribute('data-tag'),
+            wShapeSel.options[ wShapeSel.selectedIndex ].getAttribute('data-tag'),
+            box
+        ].join('~')
         document.getElementById('catlink').href = link
-        history.pushState({}, "", link)
+        history.replaceState({}, "", link)
                                      
     }
     
@@ -78,18 +91,58 @@ var canonical
 
         return (crc ^ (-1)) >>> 0
     }
+    function hashCode(str) {
+        let hash = 0;
+        for (let i = 0, len = str.length; i < len; i++) {
+            let chr = str.charCodeAt(i);
+            hash = (hash << 5) - hash + chr;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash>>>0;
+    }
 
-    function addTags(sel, isShort = false) {
+    function addTags(sel, isShort = false, mode = 0) {
         var children = sel.children
+        var value, base
+        if (mode & FRAGMENT_TYPE_CRC32) encode = crc32
+        if (mode & FRAGMENT_TYPE_HASHCODE) encode = hashCode
         for (var i = 0; i < children.length; i++) {
             var opt = children[i]
-            var tag = crc32(opt.value).toString()
+            value = opt.value
+            if (mode & FRAGMENT_INPUT_NOSPACE) value = value.replaceAll(' ','')
+            if (mode & FRAGMENT_INPUT_ALNUM) value = value.replaceAll(/[\W_]/g,'')
+            if (mode & FRAGMENT_BASE_10) base = 10
+            if (mode & FRAGMENT_BASE_16) base = 16
+            if (mode & FRAGMENT_BASE_36) base = 36
+            var tag
+            if (mode & FRAGMENT_TYPE_TEXT) {
+                tag = value
+            } else if (mode & FRAGMENT_TYPE_CRC32) {
+                tag = crc32(value).toString(base)
+            } else if (mode & FRAGMENT_TYPE_HASHCODE) {
+                tag = hashCode(value).toString(base)
+            } else console.log(mode)
             if (isShort) {
                 tag = tag.substring(0, 3)
             }
             opt.setAttribute('data-tag', tag)
             opt.setAttribute('data-index', i.toString())
         }
+    }
+    
+    function setHashOpts() {
+        fragmode = parseInt(document.getElementById('hashtype').value) |
+                   parseInt(document.getElementById('base'    ).value) |
+                   parseInt(document.getElementById('compact' ).value)
+        addTags(headSel,   true,  fragmode)
+        addTags(furSel,    false, fragmode)
+        addTags(eColorSel, false, fragmode)
+        addTags(eShapeSel, true,  fragmode)
+        addTags(ePupilSel, true,  fragmode)
+        addTags(earSel,    false, fragmode)
+        addTags(wColorSel, false, fragmode)
+        addTags(wShapeSel, false, fragmode)
+        doChange()
     }
 
     document.addEventListener('readystatechange', () => {
@@ -106,14 +159,14 @@ var canonical
             noBoxRad    = document.getElementById('noBox'       )
             girlBoxRad  = document.getElementById('girlBox'     )
             boyBoxRad   = document.getElementById('boyBox'      )
-            addTags(headSel,   true)
-            addTags(furSel         )
-            addTags(eColorSel      )
-            addTags(eShapeSel, true)
-            addTags(ePupilSel, true)
-            addTags(earSel         )
-            addTags(wColorSel      )
-            addTags(wShapeSel      )
+            addTags(headSel,   true,  fragmode)
+            addTags(furSel,    false, fragmode)
+            addTags(eColorSel, false, fragmode)
+            addTags(eShapeSel, true,  fragmode)
+            addTags(ePupilSel, true,  fragmode)
+            addTags(earSel,    false, fragmode)
+            addTags(wColorSel, false, fragmode)
+            addTags(wShapeSel, false, fragmode)
             headSel.addEventListener(   'change', doChange)
             furSel.addEventListener(    'change', doChange)
             eColorSel.addEventListener( 'change', doChange)
@@ -125,18 +178,30 @@ var canonical
             noBoxRad.addEventListener(  'change', doChange)
             girlBoxRad.addEventListener('change', doChange)
             boyBoxRad.addEventListener( 'change', doChange)
+            document.getElementById('hashtype').addEventListener('change', setHashOpts)
+            document.getElementById('base'    ).addEventListener('change', setHashOpts)
+            document.getElementById('compact' ).addEventListener('change', setHashOpts)
             var hash = window.location.hash
             if (hash.length > 1) {
-                var values = hash.substring(1).split('.')
+                var values = hash.substring(1).split('~')
+                var opt
                 if (values.length == 9) {
-                    headSel.selectedIndex   = headSel.querySelector(  '[data-tag="'+values[0]+'"]').getAttribute('data-index')
-                    furSel.selectedIndex    = furSel.querySelector(   '[data-tag="'+values[1]+'"]').getAttribute('data-index')
-                    eColorSel.selectedIndex = eColorSel.querySelector('[data-tag="'+values[2]+'"]').getAttribute('data-index')
-                    eShapeSel.selectedIndex = eShapeSel.querySelector('[data-tag="'+values[3]+'"]').getAttribute('data-index')
-                    ePupilSel.selectedIndex = ePupilSel.querySelector('[data-tag="'+values[4]+'"]').getAttribute('data-index')
-                    earSel.selectedIndex    = earSel.querySelector(   '[data-tag="'+values[5]+'"]').getAttribute('data-index')
-                    wColorSel.selectedIndex = wColorSel.querySelector('[data-tag="'+values[6]+'"]').getAttribute('data-index')
-                    wShapeSel.selectedIndex = wShapeSel.querySelector('[data-tag="'+values[7]+'"]').getAttribute('data-index')
+                    opt = headSel.querySelector(  '[data-tag="'+values[0]+'"]')
+                    if (opt !== null) headSel.selectedIndex   = opt.getAttribute('data-index')
+                    opt = furSel.querySelector(   '[data-tag="'+values[1]+'"]')
+                    if (opt !== null) furSel.selectedIndex    = opt.getAttribute('data-index')
+                    opt = eColorSel.querySelector('[data-tag="'+values[2]+'"]')
+                    if (opt !== null) eColorSel.selectedIndex = opt.getAttribute('data-index')
+                    opt = eShapeSel.querySelector('[data-tag="'+values[3]+'"]')
+                    if (opt !== null) eShapeSel.selectedIndex = opt.getAttribute('data-index')
+                    opt = ePupilSel.querySelector('[data-tag="'+values[4]+'"]')
+                    if (opt !== null) ePupilSel.selectedIndex = opt.getAttribute('data-index')
+                    opt = earSel.querySelector(   '[data-tag="'+values[5]+'"]')
+                    if (opt !== null) earSel.selectedIndex    = opt.getAttribute('data-index')
+                    opt = wColorSel.querySelector('[data-tag="'+values[6]+'"]')
+                    if (opt !== null) wColorSel.selectedIndex = opt.getAttribute('data-index')
+                    opt = wShapeSel.querySelector('[data-tag="'+values[7]+'"]')
+                    if (opt !== null) wShapeSel.selectedIndex = opt.getAttribute('data-index')
                     var box = parseInt(values[8])
                     switch(box) {
                         case 1:

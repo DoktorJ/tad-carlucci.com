@@ -668,6 +668,31 @@
                 <input type="radio" id="boyBox" name="box" value="boy"><label for="boyBox">Boy</label>
             </fieldset>
             <div><a href="https://tad-carlucci.com/Build-a-Cat/" id="catlink">Link this cat!</a></div>
+                <fieldset id="hashtypes">
+                    <legend>Hash Type</legend>
+                    <select id="hashtype" aria-label="Hash Type">
+                        <option value="4">Clear Text</option>
+                        <option value="1" selected="selected">crc32</option>
+                        <option value="2">hashCode</option>
+                    </select>
+                </fieldset>
+                <fieldset id="bases">
+                    <legend>Base (ignored for Clear Text)</legend>
+                    <select id="base" aria-label="Base">
+                        <option value="32" selected="selected">10</option>
+                        <option value="64">16</option>
+                        <option value="128">36</option>
+                    </select>
+                </fieldset>
+                <fieldset id="compacts">
+                    <legend>Compaction</legend>
+                    <select id="compact" aria-label="Compaction">
+                        <option value="0" selected="selected">None</option>
+                        <option value="8">Remove Spaces</option>
+                        <option value="16">Remove non-Alphanumerics</option>
+                    </select>
+                </fieldset>
+
     </form>
     </body>
 </html>
