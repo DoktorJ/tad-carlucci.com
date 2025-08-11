@@ -134,6 +134,19 @@ var canonical
         fragmode = parseInt(document.getElementById('hashtype').value) |
                    parseInt(document.getElementById('base'    ).value) |
                    parseInt(document.getElementById('compact' ).value)
+        if (fragmode & FRAGMENT_TYPE_CRC32) label = "addTags_crc32_"
+        if (fragmode & FRAGMENT_TYPE_HASHCODE) label = "addTags_hashCode_"
+        if (fragmode & FRAGMENT_TYPE_TEXT) label = "addTags_clearText_"
+		if (!(fragmode & FRAGMENT_TYPE_TEXT)) {
+			if (fragmode & FRAGMENT_BASE_10) label += "10"
+			if (fragmode & FRAGMENT_BASE_16) label += "16"
+			if (fragmode & FRAGMENT_BASE_36) label += "36"
+		} else {
+            if (fragmode & FRAGMENT_INPUT_NOSPACE) label += "nospace"
+            else if (fragmode & FRAGMENT_INPUT_ALNUM) label += "alphanumerics"
+			else label += "raw"
+		}
+		console.time(label)
         addTags(headSel,   true,  fragmode)
         addTags(furSel,    false, fragmode)
         addTags(eColorSel, false, fragmode)
@@ -142,6 +155,7 @@ var canonical
         addTags(earSel,    false, fragmode)
         addTags(wColorSel, false, fragmode)
         addTags(wShapeSel, false, fragmode)
+		console.timeEnd(label)
         doChange()
     }
 
